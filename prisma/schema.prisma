@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Status {
+  Published
+  Draft
+}
+
+model Customer {
+  id        String            @id @default(uuid())
+  name      String
+  email     String            @unique
+  orders    Order[]
+  addresses CustomerAddress[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model CustomerAddress {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  street     String
+  city       String
+  state      String
+  postalCode String
+  country    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Product {
+  id          String              @id @default(uuid())
+  title       String
+  description String?
+  basePrice   Float
+  collections ProductCollection[]
+  options     ProductOption[]
+  variants    ProductVariant[]
+  images      ProductImages[]
+  slug        String
+  isFeatured  Boolean             @default(false) @map("is_featured")
+  status      Status              @default(Published)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  OrderItem   OrderItem[]
+}
+
+model ProductImages {
+  id         String  @id @default(uuid())
+  productId  String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url        String
+  alt        String? @map("alt")
+  isFeatured Boolean @default(false) @map("is_featured")
+}
+
+model Collection {
+  id          String              @id @default(uuid())
+  name        String              @unique
+  description String?
+  slug        String              @unique
+  products    ProductCollection[] // Many-to-many relationship
+  status      Status              @default(Published)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model ProductOption {
+  id        String   @id @default(uuid())
+  name      String // Option Name (e.g., Size, Color)
+  values    String[]
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductCollection {
+  productId    String
+  collectionId String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, collectionId]) // Composite Primary Key
+}
+
+model ProductVariant {
+  id        String      @id @default(uuid())
+  productId String
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title     String
+  price     Float
+  sku       String
+  inventory Int
+  option1   String? // First option value (e.g., "Red" for Color)
+  option2   String? // Second option value (e.g., "L" for Size)
+  option3   String? // Third option value (if any)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  OrderItem OrderItem[]
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orderDate   DateTime    @default(now())
+  totalAmount Decimal
+  status      String // e.g., "Pending", "Shipped"
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String         @id @default(uuid())
+  orderId   String
+  order     Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product        @relation(fields: [productId], references: [id])
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int
+  price     Decimal
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
